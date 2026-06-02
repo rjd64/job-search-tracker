@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Job Search Tracker — Ryan Dibble</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f5f4f0;--surface:#fff;--surface2:#eeecea;--border:#d8d6d0;--text:#1a1a18;--muted:#7a7870;--hint:#b0ada6;--green-bg:#e4f0e0;--green-text:#2a6020;--amber-bg:#faebd4;--amber-text:#7a4a0a;--blue-bg:#ddeeff;--blue-text:#1a4a7a;--red-bg:#fde8e8;--red-text:#8a2020;--gray-bg:#eeecea;--gray-text:#6a6860;--radius:6px;--radius-lg:10px}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'IBM Plex Sans',sans-serif;background:var(--bg);color:var(--text);font-size:13px;min-height:100vh}
+.shell{max-width:1100px;margin:0 auto;padding:2rem 1.5rem 4rem}
+header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:2rem;flex-wrap:wrap;gap:1rem}
+.header-left h1{font-family:'IBM Plex Mono',monospace;font-size:22px;font-weight:500;letter-spacing:-.5px}
+.header-left p{color:var(--muted);font-size:12px;margin-top:4px;font-family:'IBM Plex Mono',monospace}
+.header-right{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.sync-status{font-size:11px;font-family:'IBM Plex Mono',monospace;color:var(--muted);display:flex;align-items:center;gap:5px}
+.sync-dot{width:7px;height:7px;border-radius:50%;background:var(--muted);flex-shrink:0;transition:background .3s}
+.sync-dot.ok{background:#2a6020}.sync-dot.err{background:#8a2020}.sync-dot.loading{background:#1a4a7a;animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.metrics{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin-bottom:2rem}
+.mc{background:var(--surface);border:.5px solid var(--border);border-radius:var(--radius-lg);padding:14px 16px}
+.mc-label{font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);font-family:'IBM Plex Mono',monospace;margin-bottom:8px}
+.mc-val{font-size:28px;font-weight:500;font-family:'IBM Plex Mono',monospace;line-height:1}
+.mc-sub{font-size:11px;color:var(--muted);margin-top:5px}
+.mc-action .mc-val{color:#8a2020}
+.tabs{display:flex;gap:4px;margin-bottom:1.5rem;flex-wrap:wrap}
+.tab{padding:6px 14px;font-size:12px;font-family:'IBM Plex Mono',monospace;cursor:pointer;border:.5px solid var(--border);border-radius:20px;background:var(--surface);color:var(--muted);transition:all .15s}
+.tab:hover{background:var(--surface2);color:var(--text)}
+.tab.active{background:var(--text);color:var(--bg);border-color:var(--text)}
+.panel{display:none}.panel.active{display:block}
+.panel-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.panel-header h2{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:500;color:var(--muted)}
+.tbl-wrap{background:var(--surface);border:.5px solid var(--border);border-radius:var(--radius-lg);overflow:hidden}
+table{width:100%;border-collapse:collapse;table-layout:fixed}
+th{text-align:left;padding:10px 14px;font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--hint);font-family:'IBM Plex Mono',monospace;font-weight:400;border-bottom:.5px solid var(--border);background:var(--surface2)}
+td{padding:11px 14px;border-bottom:.5px solid var(--border);vertical-align:middle;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+tbody tr:last-child td{border-bottom:none}
+tbody tr.data-row{cursor:pointer;transition:background .1s}
+tbody tr.data-row:hover{background:#fafaf8}
+.cell-primary{font-weight:500}.cell-muted{color:var(--muted);font-size:11px}
+.badge{display:inline-block;font-size:10px;font-family:'IBM Plex Mono',monospace;padding:2px 8px;border-radius:20px;white-space:nowrap}
+.b-waiting{background:var(--amber-bg);color:var(--amber-text)}
+.b-progress{background:var(--blue-bg);color:var(--blue-text)}
+.b-done{background:var(--green-bg);color:var(--green-text)}
+.b-action{background:var(--red-bg);color:var(--red-text)}
+.b-gray{background:var(--gray-bg);color:var(--gray-text)}
+button{font-family:'IBM Plex Sans',sans-serif;cursor:pointer}
+.btn{font-size:12px;padding:7px 14px;border:.5px solid var(--border);border-radius:var(--radius);background:var(--surface);color:var(--text);transition:background .1s}
+.btn:hover{background:var(--surface2)}
+.btn-primary{background:var(--text);color:var(--bg);border-color:var(--text)}
+.btn-primary:hover{opacity:.85}
+.btn-sm{font-size:11px;padding:4px 10px}
+.del-btn{background:none;border:none;color:var(--hint);padding:2px 6px;font-size:15px;line-height:1;transition:color .1s}
+.del-btn:hover{color:var(--red-text)}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(20,20,18,.5);z-index:200;align-items:center;justify-content:center;padding:1rem}
+.modal-overlay.open{display:flex}
+.modal{background:var(--surface);border:.5px solid var(--border);border-radius:var(--radius-lg);padding:1.5rem;width:100%;max-width:440px;max-height:90vh;overflow-y:auto}
+.modal h3{font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:500;margin-bottom:1.25rem}
+.field{margin-bottom:12px}
+.field label{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);font-family:'IBM Plex Mono',monospace;margin-bottom:5px}
+.field input,.field select,.field textarea{width:100%;font-size:13px;font-family:'IBM Plex Sans',sans-serif;padding:8px 10px;border:.5px solid var(--border);border-radius:var(--radius);background:var(--bg);color:var(--text);outline:none;transition:border-color .15s}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--text)}
+.field textarea{height:80px;resize:vertical}
+.modal-btns{display:flex;gap:8px;justify-content:flex-end;margin-top:1.25rem;padding-top:1rem;border-top:.5px solid var(--border)}
+.alerts{margin-bottom:1.25rem}
+.alert-item{display:flex;align-items:center;gap:10px;background:var(--red-bg);border:.5px solid #f0b0b0;border-radius:var(--radius);padding:9px 14px;margin-bottom:6px;font-size:12px;color:var(--red-text);cursor:pointer}
+.alert-item strong{font-weight:500}
+.loading-overlay{display:none;position:fixed;inset:0;background:rgba(245,244,240,.85);z-index:300;align-items:center;justify-content:center;flex-direction:column;gap:12px}
+.loading-overlay.show{display:flex}
+.spinner{width:28px;height:28px;border:2px solid var(--border);border-top-color:var(--text);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-overlay p{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted)}
+@media(max-width:680px){.metrics{grid-template-columns:repeat(3,minmax(0,1fr))}.shell{padding:1rem 1rem 3rem}}
+</style>
+</head>
+<body>
+
+<div class="loading-overlay show" id="loading-overlay">
+  <div class="spinner"></div>
+  <p>loading from database...</p>
+</div>
+
+<div class="shell">
+  <header>
+    <div class="header-left">
+      <h1>job_search.tracker</h1>
+      <p>Ryan Dibble &mdash; Pittsburgh, PA &mdash; June 2026</p>
+    </div>
+    <div class="header-right">
+      <div class="sync-status"><div class="sync-dot loading" id="sync-dot"></div><span id="sync-label">connecting...</span></div>
+      <button class="btn btn-sm" onclick="exportCSV()">&#8595; export CSV</button>
+      <button class="btn btn-sm btn-primary" onclick="openModal(activeSection,null)">+ add entry</button>
+    </div>
+  </header>
+  <div class="metrics" id="metrics"></div>
+  <div class="alerts" id="alerts"></div>
+  <div class="tabs">
+    <button class="tab active" onclick="showTab('jobs',this)">Jobs applied</button>
+    <button class="tab" onclick="showTab('companies',this)">Companies</button>
+    <button class="tab" onclick="showTab('recruiters',this)">Recruiters</button>
+    <button class="tab" onclick="showTab('connections',this)">Connections</button>
+    <button class="tab" onclick="showTab('events',this)">Events</button>
+  </div>
+  <div id="jobs" class="panel active"></div>
+  <div id="companies" class="panel"></div>
+  <div id="recruiters" class="panel"></div>
+  <div id="connections" class="panel"></div>
+  <div id="events" class="panel"></div>
+</div>
+
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal">
+    <h3 id="modal-title">Add entry</h3>
+    <div id="modal-fields"></div>
+    <div class="modal-btns">
+      <button class="btn" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveModal()">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const SUPA_URL = 'https://oejcfsxnjvshhleckkkf.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9lamNmc3huanZzaGhsZWNra2tmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA0MjE0MzIsImV4cCI6MjA5NTk5NzQzMn0.IYlR64v0qJM5eiT8-BiLTwVblPCUYkpU8KvQPlTy9mg';
+const HEADERS = {'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json','Prefer':'return=representation'};
+
+let activeSection = 'jobs';
+let editCtx = {section:null, id:null};
+let DATA = {jobs:[], companies:[], recruiters:[], connections:[], events:[]};
+
+// ── Supabase helpers ──────────────────────────────────────────────
+async function dbGet(table) {
+  const r = await fetch(`${SUPA_URL}/rest/v1/${table}?order=id.asc`, {headers: HEADERS});
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+async function dbInsert(table, obj) {
+  const r = await fetch(`${SUPA_URL}/rest/v1/${table}`, {method:'POST', headers: HEADERS, body: JSON.stringify(obj)});
+  if (!r.ok) throw new Error(await r.text());
+  return (await r.json())[0];
+}
+async function dbUpdate(table, id, obj) {
+  const r = await fetch(`${SUPA_URL}/rest/v1/${table}?id=eq.${id}`, {method:'PATCH', headers: HEADERS, body: JSON.stringify(obj)});
+  if (!r.ok) throw new Error(await r.text());
+}
+async function dbDelete(table, id) {
+  const r = await fetch(`${SUPA_URL}/rest/v1/${table}?id=eq.${id}`, {method:'DELETE', headers: HEADERS});
+  if (!r.ok) throw new Error(await r.text());
+}
+
+function setSyncStatus(state, label) {
+  const dot = document.getElementById('sync-dot');
+  const lbl = document.getElementById('sync-label');
+  dot.className = 'sync-dot ' + state;
+  lbl.textContent = label;
+}
+
+// ── Load all data ─────────────────────────────────────────────────
+async function loadAll() {
+  setSyncStatus('loading', 'loading...');
+  try {
+    const [jobs, companies, recruiters, connections, events] = await Promise.all([
+      dbGet('jobs'), dbGet('companies'), dbGet('recruiters'), dbGet('connections'), dbGet('events')
+    ]);
+    DATA = {jobs, companies, recruiters, connections, events};
+    setSyncStatus('ok', 'synced');
+    renderAll();
+  } catch(e) {
+    setSyncStatus('err', 'connection error');
+    console.error(e);
+  }
+  document.getElementById('loading-overlay').classList.remove('show');
+}
+
+// ── Schemas ───────────────────────────────────────────────────────
+const SCHEMAS = {
+  jobs:{title:'job application',
+    fields:[{k:'company',label:'Company',type:'text'},{k:'role',label:'Role',type:'text'},{k:'location',label:'Location',type:'text'},{k:'date_applied',label:'Date applied',type:'text',placeholder:'e.g. Jun 3'},{k:'status',label:'Status',type:'select',opts:['No response','In progress','Callback','Interviewing','Action needed','Offer','Closed','Rejected']},{k:'notes',label:'Notes',type:'textarea'}],
+    cols:[{h:'Company',k:'company',w:'17%',primary:true},{h:'Role',k:'role',w:'22%'},{h:'Location',k:'location',w:'12%',muted:true},{h:'Applied',k:'date_applied',w:'8%',muted:true},{h:'Status',k:'status',w:'13%',badge:true},{h:'Notes',k:'notes',w:'24%',muted:true},{h:'',k:'_del',w:'4%'}]},
+  companies:{title:'company outreach',
+    fields:[{k:'name',label:'Company',type:'text'},{k:'focus',label:'Role / focus',type:'text'},{k:'date',label:'Date',type:'text'},{k:'status',label:'Status',type:'select',opts:['Waiting','Responded','In conversation','Closed']},{k:'notes',label:'Notes',type:'textarea'}],
+    cols:[{h:'Company',k:'name',w:'22%',primary:true},{h:'Focus',k:'focus',w:'20%'},{h:'Date',k:'date',w:'11%',muted:true},{h:'Status',k:'status',w:'14%',badge:true},{h:'Notes',k:'notes',w:'29%',muted:true},{h:'',k:'_del',w:'4%'}]},
+  recruiters:{title:'recruiter',
+    fields:[{k:'agency',label:'Agency / recruiter',type:'text'},{k:'contact',label:'Contact name',type:'text'},{k:'date',label:'Date',type:'text'},{k:'status',label:'Status',type:'select',opts:['Waiting','Submitted','Active','Scheduled','1:1 booked','Action needed','Ghosted','Inactive']},{k:'notes',label:'Notes',type:'textarea'}],
+    cols:[{h:'Agency',k:'agency',w:'20%',primary:true},{h:'Contact',k:'contact',w:'15%',muted:true},{h:'Date',k:'date',w:'11%',muted:true},{h:'Status',k:'status',w:'14%',badge:true},{h:'Notes',k:'notes',w:'36%',muted:true},{h:'',k:'_del',w:'4%'}]},
+  connections:{title:'connection',
+    fields:[{k:'name',label:'Name',type:'text'},{k:'company',label:'Company / context',type:'text'},{k:'date',label:'Date',type:'text'},{k:'status',label:'Status',type:'select',opts:['Waiting','Responded','Scheduled','Completed','Action needed']},{k:'notes',label:'Notes',type:'textarea'}],
+    cols:[{h:'Name',k:'name',w:'18%',primary:true},{h:'Company',k:'company',w:'15%',muted:true},{h:'Date',k:'date',w:'9%',muted:true},{h:'Status',k:'status',w:'14%',badge:true},{h:'Notes',k:'notes',w:'40%',muted:true},{h:'',k:'_del',w:'4%'}]},
+  events:{title:'event',
+    fields:[{k:'name',label:'Event name',type:'text'},{k:'organizer',label:'Organizer',type:'text'},{k:'date',label:'Date',type:'text'},{k:'status',label:'Status',type:'select',opts:['Scheduled','Completed','Skipped']},{k:'contacts',label:'Contacts made',type:'text'},{k:'notes',label:'Notes',type:'textarea'}],
+    cols:[{h:'Event',k:'name',w:'24%',primary:true},{h:'Organizer',k:'organizer',w:'17%',muted:true},{h:'Date',k:'date',w:'10%',muted:true},{h:'Status',k:'status',w:'12%',badge:true},{h:'Contacts',k:'contacts',w:'15%',muted:true},{h:'Notes',k:'notes',w:'18%',muted:true},{h:'',k:'_del',w:'4%'}]},
+};
+
+const BADGE_MAP={'waiting':'b-waiting','no response':'b-waiting','scheduled':'b-progress','in progress':'b-progress','active':'b-progress','1:1 booked':'b-progress','in conversation':'b-progress','callback':'b-progress','interviewing':'b-progress','action needed':'b-action','completed':'b-done','responded':'b-done','attended':'b-done','submitted':'b-done','offer':'b-done','ghosted':'b-gray','closed':'b-gray','rejected':'b-gray','inactive':'b-gray','skipped':'b-gray'};
+
+function badgeHtml(s){if(!s)return'';const cls=BADGE_MAP[s.toLowerCase()]||'b-gray';return`<span class="badge ${cls}">${s}</span>`;}
+
+function renderMetrics(){
+  const ac = s => DATA[s].filter(r=>(r.status||'').toLowerCase()==='action needed').length;
+  const inProg = DATA.jobs.filter(r=>['in progress','interviewing','callback'].includes((r.status||'').toLowerCase())).length;
+  const rejected = DATA.jobs.filter(r=>(r.status||'').toLowerCase()==='rejected').length;
+  document.getElementById('metrics').innerHTML=`
+    <div class="mc"><div class="mc-label">Jobs applied</div><div class="mc-val">${DATA.jobs.length}</div><div class="mc-sub">${inProg} active · ${rejected} rejected</div></div>
+    <div class="mc"><div class="mc-label">Companies</div><div class="mc-val">${DATA.companies.length}</div><div class="mc-sub">${DATA.companies.filter(r=>r.status==='Responded').length} responded</div></div>
+    <div class="mc"><div class="mc-label">Recruiters</div><div class="mc-val">${DATA.recruiters.length}</div><div class="mc-sub">${DATA.recruiters.filter(r=>['submitted','active'].includes((r.status||'').toLowerCase())).length} active</div></div>
+    <div class="mc${ac('connections')>0?' mc-action':''}"><div class="mc-label">Connections</div><div class="mc-val">${DATA.connections.length}</div><div class="mc-sub">${ac('connections')} need action</div></div>
+    <div class="mc"><div class="mc-label">Events</div><div class="mc-val">${DATA.events.length}</div><div class="mc-sub">${DATA.events.filter(e=>(e.status||'').toLowerCase()==='scheduled').length} upcoming</div></div>`;
+}
+
+function renderAlerts(){
+  const items=[];
+  ['jobs','connections','recruiters'].forEach(s=>{
+    DATA[s].forEach(r=>{if((r.status||'').toLowerCase()==='action needed'){
+      const lbl=s==='jobs'?r.company:s==='connections'?r.name:r.agency;
+      items.push({label:`${s.charAt(0).toUpperCase()+s.slice(1)} → ${lbl}`,note:(r.notes||'').split('\n')[0],section:s,id:r.id});
+    }});
+  });
+  document.getElementById('alerts').innerHTML=items.map(it=>`<div class="alert-item" onclick="showTab('${it.section}',null);openModal('${it.section}',${it.id})">&#9888; <span><strong>${it.label}</strong>${it.note?' — '+it.note:''}</span></div>`).join('');
+}
+
+function renderTable(section){
+  const schema=SCHEMAS[section], rows=DATA[section];
+  let html=`<div class="panel-header"><h2>${section} &mdash; ${rows.length} entr${rows.length===1?'y':'ies'}</h2></div><div class="tbl-wrap"><table><colgroup>`;
+  schema.cols.forEach(c=>html+=`<col style="width:${c.w}">`);
+  html+=`</colgroup><thead><tr>`;schema.cols.forEach(c=>html+=`<th>${c.h}</th>`);html+=`</tr></thead><tbody>`;
+  rows.forEach(row=>{
+    const st=(row.status||'').toLowerCase();
+    const isAction=st==='action needed';
+    const isDim=st==='rejected'||st==='closed';
+    html+=`<tr class="data-row" style="${isDim?'opacity:0.45':''}" onclick="openModal('${section}',${row.id})">`;
+    schema.cols.forEach(c=>{
+      if(c.k==='_del'){html+=`<td><button class="del-btn" onclick="event.stopPropagation();delRow('${section}',${row.id})" title="Delete">&#215;</button></td>`;return;}
+      const val=(row[c.k]||'').toString().split('\n')[0];
+      if(c.badge)html+=`<td>${badgeHtml(row[c.k]||'')}</td>`;
+      else if(c.primary)html+=`<td class="cell-primary" style="${isAction?'color:var(--red-text)':''}">${val}</td>`;
+      else if(c.muted)html+=`<td class="cell-muted">${val}</td>`;
+      else html+=`<td>${val}</td>`;
+    });
+    html+=`</tr>`;
+  });
+  html+=`</tbody></table></div>`;
+  document.getElementById(section).innerHTML=html;
+}
+
+function renderAll(){renderMetrics();renderAlerts();Object.keys(SCHEMAS).forEach(s=>renderTable(s));updateTabLabels();}
+
+function showTab(id,btn){
+  activeSection=id;
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  if(btn){document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));btn.classList.add('active');}
+  else{document.querySelectorAll('.tab').forEach(t=>{if((t.getAttribute('onclick')||'').includes(`'${id}'`))t.classList.add('active');});}
+}
+
+function updateTabLabels(){
+  const names={jobs:'Jobs applied',companies:'Companies',recruiters:'Recruiters',connections:'Connections',events:'Events'};
+  document.querySelectorAll('.tab').forEach(t=>{const m=(t.getAttribute('onclick')||'').match(/'(\w+)'/);if(m&&DATA[m[1]]!==undefined)t.textContent=`${names[m[1]]} (${DATA[m[1]].length})`;});
+}
+
+function openModal(section,id){
+  editCtx={section,id};
+  const schema=SCHEMAS[section];
+  const row=id!==null?DATA[section].find(r=>r.id===id):null;
+  document.getElementById('modal-title').textContent=row?`Edit ${schema.title}`:`Add ${schema.title}`;
+  let html='';
+  schema.fields.forEach(f=>{
+    html+=`<div class="field"><label>${f.label}</label>`;
+    const val=row?(row[f.k]||''):'';
+    if(f.type==='select'){html+=`<select id="f_${f.k}">`;f.opts.forEach(o=>html+=`<option${val===o?' selected':''}>${o}</option>`);html+=`</select>`;}
+    else if(f.type==='textarea'){html+=`<textarea id="f_${f.k}">${val.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</textarea>`;}
+    else{html+=`<input type="text" id="f_${f.k}" value="${val.replace(/"/g,'&quot;').replace(/</g,'&lt;')}" placeholder="${f.placeholder||''}">`;}
+    html+=`</div>`;
+  });
+  document.getElementById('modal-fields').innerHTML=html;
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function closeModal(){document.getElementById('modal-overlay').classList.remove('open');}
+
+async function saveModal(){
+  const{section,id}=editCtx;
+  const schema=SCHEMAS[section];
+  const obj={};
+  schema.fields.forEach(f=>{const el=document.getElementById('f_'+f.k);if(el)obj[f.k]=el.value;});
+  setSyncStatus('loading','saving...');
+  try{
+    if(id!==null){
+      await dbUpdate(section,id,obj);
+      const idx=DATA[section].findIndex(r=>r.id===id);
+      if(idx>-1)DATA[section][idx]={...DATA[section][idx],...obj};
+    } else {
+      const created=await dbInsert(section,obj);
+      DATA[section].push(created);
+    }
+    setSyncStatus('ok','synced');
+    closeModal();renderAll();
+  }catch(e){setSyncStatus('err','save failed');alert('Save failed: '+e.message);}
+}
+
+async function delRow(section,id){
+  if(!confirm('Remove this entry?'))return;
+  setSyncStatus('loading','deleting...');
+  try{
+    await dbDelete(section,id);
+    DATA[section]=DATA[section].filter(r=>r.id!==id);
+    setSyncStatus('ok','synced');renderAll();
+  }catch(e){setSyncStatus('err','delete failed');alert('Delete failed: '+e.message);}
+}
+
+function exportCSV(){
+  let csv='';
+  Object.keys(SCHEMAS).forEach(section=>{
+    const schema=SCHEMAS[section],cols=schema.cols.filter(c=>c.k!=='_del');
+    csv+=section.toUpperCase()+'\n'+cols.map(c=>c.h).join(',')+'\n';
+    DATA[section].forEach(row=>{csv+=cols.map(c=>'"'+(row[c.k]||'').replace(/"/g,'""')+'"').join(',')+'\n';});
+    csv+='\n';
+  });
+  const blob=new Blob([csv],{type:'text/csv'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='job_search_tracker.csv';a.click();
+}
+
+document.getElementById('modal-overlay').addEventListener('click',function(e){if(e.target===this)closeModal();});
+loadAll();
+</script>
+</body>
+</html>
